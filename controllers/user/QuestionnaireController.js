@@ -11,6 +11,8 @@ const Questionnaire = require("../../models/questionnaire");
 const Questions = require("../../models/questions");
 const {getPagination, getPagingData} = require("../../services/pagination");
 const Answers = require("../../models/answers");
+const sequelize = require("../../services/pool");
+const UsersAndQuestionnaire = require("../../models/usersAndQuestionnaire");
 
 const pageSize = 15;
 
@@ -39,7 +41,7 @@ class QuestionnaireController {
 							model: Users,
 							as: 'answerUser',
 							required: false,
-							attributes: ['id', 'firstName', 'lastName']
+							attributes: ['id', 'firstName', 'lastName'],
 						}],
 					}],
 				}, {
@@ -47,48 +49,18 @@ class QuestionnaireController {
 					as: 'questionnaireUser',
 					required: false,
 					attributes: ['id', 'firstName', 'lastName']
-				}],
-				offset: offset,
-				limit: limit,
-				distinct: true,
-			}).then((data) => {
-				const result = getPagingData(data, page, limit);
-				const questionnaire = successHandler('ok', result);
-				return res.json(questionnaire);
-			}).catch((err) => {
-				return res.status(500).json({errors: err.message});
-			});
-		} catch(e) {
-			next(e);
-		}
-	}
-
-	static async getMyQuestionnaires(req, res, next) {
-		try {
-			await Validate(req.query, {
-				page: 'integer|min:1',
-			})
-			const {page = 1} = req.query;
-
-			const {limit, offset} = getPagination(page, pageSize);
-
-			await Questionnaire.findAndCountAll({
-				include: [{
-					model: Questions,
-					as: 'questions',
-					required: false,
-					include: [{
-						model: Answers,
-						as: 'questionAnswer',
-						required: false,
-						where: {userId: req.userId},
-						attributes: ['id', 'answer', 'trueAnswer'],
-					}],
 				}, {
 					model: Users,
-					as: 'questionnaireUser',
+					as: 'questionnaireUsers',
 					required: false,
-					attributes: ['id', 'firstName', 'lastName'],
+					attributes: ['id', 'firstName', 'lastName',
+						[sequelize.literal(`(
+						SELECT COUNT(*) FROM Answers AS userAnswers INNER JOIN Questionnaire as userQuestionnaire 
+						ON userAnswers.questionnaireId = userQuestionnaire.id 
+						WHERE userAnswers.trueAnswer = 1 AND userAnswers.questionnaireId = userQuestionnaire.id 
+						AND userAnswers.userId = questionnaireUsers.id
+						)`), 'rightAnswers']
+					],
 				}],
 				offset: offset,
 				limit: limit,
@@ -137,11 +109,12 @@ class QuestionnaireController {
 	static async postAnswer(req, res, next) {
 		try {
 			await Validate(req.body, {
+				questionnaireId: 'required|integer|min:1',
 				answers: 'required|array|minLength:1',
 				'answers.*.questionId': 'required|integer|min:1',
 				'answers.*.answer': 'required|regex:[a-zA-Zа-яА-ЯёЁա-ֆԱ-Ֆև0-9 ]$',
 			})
-			const {answers} = req.body;
+			const {questionnaireId, answers} = req.body;
 
 			const create = await Promise.map(answers, async (d) => {
 				const answer = await Answers.findOne({where: {questionId: d.questionId, userId: req.userId}});
@@ -164,6 +137,8 @@ class QuestionnaireController {
 					});
 				})
 			})
+
+			await UsersAndQuestionnaire.create({questionnaireId, userId: req.userId});
 
 			const result = successHandler(created, create);
 			res.json(result);

@@ -1,6 +1,7 @@
 const {Model, DataTypes} = require('sequelize');
 const db = require("../services/pool");
 const Users = require("./user");
+const UsersAndQuestionnaire = require("./usersAndQuestionnaire");
 
 class Questionnaire extends Model {
 
@@ -45,6 +46,27 @@ Users.hasMany(Questionnaire, {
 	onUpdate: 'cascade',
 	onDelete: 'cascade',
 	as: 'userQuestionnaire'
+});
+
+Questionnaire.belongsToMany(Users, {
+	through: UsersAndQuestionnaire,
+	as: "questionnaireUsers",
+	foreignKey: {
+		name: 'questionnaireId',
+		allowNull: true,
+	},
+	onUpdate: 'cascade',
+	onDelete: 'SET NULL',
+});
+Users.belongsToMany(Questionnaire, {
+	through: UsersAndQuestionnaire,
+	as: "userQuestionnaires",
+	foreignKey: {
+		name: 'userId',
+		allowNull: true,
+	},
+	onUpdate: 'cascade',
+	onDelete: 'SET NULL',
 });
 
 module.exports = Questionnaire;

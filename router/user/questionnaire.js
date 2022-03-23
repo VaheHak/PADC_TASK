@@ -9,7 +9,6 @@ const QuestionnaireController = require('../../controllers/user/QuestionnaireCon
 
 //GET
 router.get('/user/questionnaires', xApiKey, userType['validateUser'], QuestionnaireController.getQuestionnaires);
-router.get('/user/myQuestionnaires', xApiKey, userType['validateUser'], QuestionnaireController.getMyQuestionnaires);
 
 //POST
 router.post('/user/questionnaire', xApiKey, userType['validateUser'], QuestionnaireController.postQuestionnaire);
