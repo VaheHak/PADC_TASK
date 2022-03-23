@@ -11,9 +11,7 @@ async function Validate(inputs, rules, regex, mobile, customError, messages) {
 		let errors = {};
 		_.forEach(regex, (value, key) => {
 			if (value && key.toLowerCase().includes('phone') && (!/^\+[1-9]{1}[0-9]{3,14}$/.test(value) || !phone(value, {
-				validateMobilePrefix: true,
-				strictDetection: true
-			}).isValid)){
+				validateMobilePrefix: true, strictDetection: true}).isValid)){
 				if (mobile){
 					errors = error_message_phoneNumber;
 				} else{
